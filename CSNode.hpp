@@ -1,3 +1,5 @@
+#ifndef CSNODE_hpp
+#define CSNODE_hpp
 //client/server transaction from samme node
 
 #include <stdio.h>
@@ -14,6 +16,7 @@
 #include <iostream>
 
 #include "Buffer.cpp"
+#include "Server.hpp"
 
 using namespace std;
 
@@ -23,6 +26,7 @@ public:
     int bindSocket, port;
     bool hasBinding;
 
+    Server server;
 public:
     struct CSConnection {
         int connectionSocket;
@@ -35,7 +39,8 @@ public:
     void unBind ();
 
 public:
-    CSNode () { hasBinding = false; }
+    CSNode () : server(this) { hasBinding = false; }
+    ~CSNode () { server.endThread(); }
 
     CSConnection *waitForIncomming(int port);
     CSConnection *connectToPeer (const char *address, int port);
@@ -50,3 +55,4 @@ public:
     int clientPUSH (CSConnection *connection, const char *filename);
     int serverPUSH (CSConnection *connection, const char *filename); // PUSH from client
 };
+#endif

@@ -174,11 +174,11 @@ int CSNode::clientPUSH (CSNode::CSConnection *connection, const char *filename)
         char byte;
         int len = read(fd, &byte, 1);
         if(len != 1) break;
-        len = send(connection->connectionSocket, &byte, 1, 0);
-        if(len != 1) break;
-        // char bytebuf[32];
-        // sprintf(bytebuf, "%d", byte);
-        // node.writeSentence(connection, bytebuf);
+        // len = send(connection->connectionSocket, &byte, 1, 0);
+        // if(len != 1) break;
+        char bytebuf[32];
+        sprintf(bytebuf, "%d", byte);
+        writeSentence(connection, bytebuf);
     }
     if (i == size)
         printf("<PUSH> : file sent\n");
@@ -202,14 +202,16 @@ CSNode::CSConnection *CSNode::clientCommand(string command, CSNode::CSConnection
         if(argv.size() < 2) {
             cout << "Usage : SERVE <port>\n";
         } else {
-            cout << "(*) Serving calls on port " << argv[1] << "....\n";
+            cout << "Server thread started on port " << argv[1] << "....\n";
 
-            CSNode::CSConnection *newConnection = waitForIncomming (atoi(argv[1].c_str()));
-            if(newConnection) {
-                cout << "Gracefully accepted call from " << newConnection->identityString << " :)\n";
-                connection = newConnection;
-                serverCommand (connection);
-            }
+            doBind(atoi(argv[1].c_str()));
+            server.startThread();
+            // CSNode::CSConnection *newConnection = waitForIncomming (atoi(argv[1].c_str()));
+            // if(newConnection) {
+            //     cout << "Gracefully accepted call from " << newConnection->identityString << " :)\n";
+            //     connection = newConnection;
+            //     serverCommand (connection);
+            // }
         }
     } else if(!keyword.compare("CALL")) {
         if(argv.size() < 3) {
@@ -282,12 +284,12 @@ int CSNode::serverPUSH (CSNode::CSConnection *connection, const char *filename) 
 
     int i;
     for (i = 0; i < size; i++) {
-        // string input = node.readSentence(connection);
-        // char number = atoi(input.c_str());
-        char number;
-        int len = recv(connection->connectionSocket, &number, 1, 0);
-        if(len != 1) break;
-        len = write (fd, &number, 1);
+        string input = readSentence(connection);
+        char number = atoi(input.c_str());
+        // char number;
+        // int len = recv(connection->connectionSocket, &number, 1, 0);
+        // if(len != 1) break;
+        int len = write (fd, &number, 1);
         if(len != 1) break;
     }
     if(i == size)
