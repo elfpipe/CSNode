@@ -47,6 +47,7 @@ void *Server::thread(void *dummy) {
                 _this->node->serverCommand (connection);
                 _this->node->closeConnection (connection);
                 cout << "Call completed.\n";
+                _this->endThread();
             }
         }
 
