@@ -44,5 +44,9 @@ public:
     string readSentence (CSConnection *connection, char stopCharacter = '\3');
     bool writeSentence (CSConnection *connection, string sentence);
 
-    void createServer (CSConnection *connection);
+    void serverCommand (CSConnection *connection);
+    CSConnection *clientCommand (string command, CSConnection *connection);
+
+    int clientPUSH (CSConnection *connection, const char *filename);
+    int serverPUSH (CSConnection *connection, const char *filename); // PUSH from client
 };

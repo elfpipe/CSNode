@@ -127,13 +127,13 @@ string CSNode::readSentence (CSConnection *connection, char stopCharacter) { //E
         return test;
 
     while ((bytes = recv(connection->connectionSocket, buffer, Bufsize, 0)) >= 0) {
+        if (bytes < 0) {
+            perror ("recv)");
+            exit (0);
+        }
         connection->readBuffer.fill(buffer, bytes);
         if (connection->readBuffer.contains ('\3'))
             break;
-    }
-    if (bytes < 0) {
-        perror ("recv)");
-        exit (0);
     }
     return connection->readBuffer.read();
 }
@@ -148,30 +148,123 @@ bool CSNode::writeSentence (CSConnection *connection, string sentence) {
     return false;
 }
 
-int term = 0;
+int CSNode::clientPUSH (CSNode::CSConnection *connection, const char *filename)
+{
+    int fd = open (filename,  O_RDONLY);
+    if (fd < 0) {
+        writeSentence(connection, "0");
+	    perror ("open");
+	    return -1;
+    }
 
-char *safe_recv(int socket) {
-    static char buffer[4096];
-    int bytes, offset = 0;
-    do {
-	bytes = recv (socket, buffer + offset, sizeof(buffer) - 1 - offset, 0);
-	offset += bytes;
-    } while (bytes > 0
-	&& buffer[offset - 1] != '\3'
-	&& buffer[offset - 1] != '\4');
+    //calculate file size
+    int size = lseek (fd, 0, SEEK_END);
+    lseek (fd, 0, SEEK_SET);
+    char sizebuf[128];
 
-    if (buffer[offset - 1] == '\4')
-        term = 1;
-    buffer[offset - 1] = '\0';
-//    if (bytes < 0)
-//	perror("recv");
-    return buffer;
+    //send file size as string
+    sprintf(sizebuf, "%d", size);
+    writeSentence(connection, sizebuf);
+
+    printf("<send file> : %s , size=%s\n", filename, sizebuf);
+
+    int i;
+    for (i = 0; i < size; i++) {
+        //construct string with single byte
+        char byte;
+        int len = read(fd, &byte, 1);
+        if(len != 1) break;
+        len = send(connection->connectionSocket, &byte, 1, 0);
+        if(len != 1) break;
+        // char bytebuf[32];
+        // sprintf(bytebuf, "%d", byte);
+        // node.writeSentence(connection, bytebuf);
+    }
+    if (i == size)
+        printf("<PUSH> : file sent\n");
+    else
+        printf("<PUSH> : incomplete send\n");
+
+    close (fd);
+    return 0;
 }
 
-int do_serverPUSH (CSNode &node, CSNode::CSConnection *connection, const char *filename) // PUSH from client
+CSNode::CSConnection *CSNode::clientCommand(string command, CSNode::CSConnection *connection = 0) {
+    astream a(command);
+    string stripped = a.get('\n');
+    a.setString(stripped);
+    vector<string> argv = a.split(' ');
+    string keyword = argv[0];
+
+    cout << "argv[0]: '" << argv[0] << "'\n";
+
+    if(!keyword.compare("SERVE")) {
+        if(argv.size() < 2) {
+            cout << "Usage : SERVE <port>\n";
+        } else {
+            cout << "(*) Serving calls on port " << argv[1] << "....\n";
+
+            CSNode::CSConnection *newConnection = waitForIncomming (atoi(argv[1].c_str()));
+            if(newConnection) {
+                cout << "Gracefully accepted call from " << newConnection->identityString << " :)\n";
+                connection = newConnection;
+                serverCommand (connection);
+            }
+        }
+    } else if(!keyword.compare("CALL")) {
+        if(argv.size() < 3) {
+            cout << "Usage : CALL <address> <port>\n";
+        } else {
+            if (connection) {
+                cout << "Please close previous connection to " << connection->identityString << " first. (CALL)\n";
+                return connection;
+            }
+
+            CSNode::CSConnection *newConnection = connectToPeer(argv[1].c_str(), atoi(argv[2].c_str()));
+
+            if (newConnection) {
+                cout << "Successfully connected to " << argv[1] << "\n";
+                cout << "Sending credentials to " << argv[1] << "\n";
+                // -- bla bla --
+                cout << "Host accepted call.\n";
+                connection = newConnection;
+                //node.createServer (connection);
+            } else cout << "Failed to connect to " << argv[1] << "\n";
+        }
+        return connection;
+    } else if (!keyword.compare("MESSAGE")) {
+        if(connection) {
+            writeSentence (connection, stripped);
+        } else cout << "No connection\n";
+    } else if (!keyword.compare("CLOSE")) {
+        if(connection) {
+            writeSentence(connection, "CLOSE");
+            closeConnection(connection);
+            cout << "Connection closed\n";
+            connection = 0;
+        } else cout << "Not connected.\n";
+    } else if (!keyword.compare("EXIT")) {
+        if (connection) {
+            writeSentence (connection, "CLOSE");
+            closeConnection (connection);
+        }
+        cout << "Connection closed. Exit.\n";
+        exit(0);
+    } else if (!keyword.compare("PUSH")) {
+        if(connection) {
+            writeSentence (connection, stripped);
+            clientPUSH (connection, argv[1].c_str());
+        } else cout << "No connection\n";
+    } else if (!keyword.compare("PULL")) {
+
+    }
+    return connection;
+}
+
+int CSNode::serverPUSH (CSNode::CSConnection *connection, const char *filename) // PUSH from client
 {
     //read size from connect
-    string sizestr = node.readSentence(connection);
+    string sizestr = readSentence(connection);
     int size = atoi(sizestr.c_str());
 
     if (size == 0) {
@@ -205,7 +298,7 @@ int do_serverPUSH (CSNode &node, CSNode::CSConnection *connection, const char *f
     return 0;
 }
 
-void CSNode::createServer (CSConnection *connection) {
+void CSNode::serverCommand (CSConnection *connection) {
     string message = readSentence(connection);
     astream a(message);
     vector<string> argv = a.split(' ');
@@ -224,8 +317,7 @@ void CSNode::createServer (CSConnection *connection) {
         closeConnection (connection);
         exit(0); // abandon...
     } else if (!keyword.compare("PUSH")) {
-        cout << "PUSH\n";
-        do_serverPUSH(*this, connection, argv[1].c_str());
+        serverPUSH(connection, argv[1].c_str());
     } else if (!keyword.compare("PULL")) {
 
     }
