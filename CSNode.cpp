@@ -213,6 +213,9 @@ CSNode::CSConnection *CSNode::clientCommand(string command, CSNode::CSConnection
             //     serverCommand (connection);
             // }
         }
+    } else if(!keyword.compare("UNSERVE")) {
+        cout << "Ending server thread\n";
+        server.endThread();
     } else if(!keyword.compare("CALL")) {
         if(argv.size() < 3) {
             cout << "Usage : CALL <address> <port>\n";
