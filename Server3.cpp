@@ -20,6 +20,7 @@ void Server::startThread () {
     }
 }
 void *Server::thread(void *dummy) {
+    return 0;
 }
 void Server::endThread() {
 }

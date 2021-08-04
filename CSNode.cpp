@@ -1,15 +1,16 @@
 #include "CSNode.hpp"
 #include "Strings.hpp"
+#include <sys/socket.h>
+#include <netdb.h>
 bool CSNode::doBind (int port) {
     //if (hasBinding) return true;
 
     // server address
     this->port = port;
-    struct sockaddr_in address = (struct sockaddr_in) {
-        AF_INET,
-        htons((sa_family_t)port),
-        (in_port_t){INADDR_ANY}
-    };
+    struct sockaddr_in address;
+	address.sin_family = AF_INET;
+	address.sin_port = htons(port);
+	address.sin_addr.s_addr = INADDR_ANY;
     int addrlen = sizeof(address);
 
     // Creating socket file descriptor
@@ -54,11 +55,11 @@ CSNode::CSConnection *CSNode::waitForIncomming(int port) {
     }
     CSConnection *connection = new CSConnection;
 
-    struct sockaddr_in address = (struct sockaddr_in) {
-        AF_INET,
-        htons((sa_family_t)port),
-        (in_port_t){INADDR_ANY}
-    };
+    struct sockaddr_in address;
+	address.sin_family = AF_INET;
+	address.sin_port = htons(port);
+	address.sin_addr.s_addr = INADDR_ANY;
+
     int addrlen = sizeof(address);
     
     if ((connection->connectionSocket = accept(bindSocket, (struct sockaddr *)&address, (socklen_t*)&addrlen)) < 0) {
@@ -82,20 +83,29 @@ CSNode::CSConnection *CSNode::connectToPeer (const char *address, int port) {
     	return 0;
     }
 
-    struct sockaddr_in saddr;
-    memset(&saddr, '0', sizeof(saddr));
+    struct sockaddr_in sa;
 
-    saddr.sin_family = AF_INET;
-    saddr.sin_port = htons(port);
+	// port = 2121;
+    sa.sin_family = AF_INET;
+    sa.sin_port = htons(port);
+	sa.sin_addr.s_addr = INADDR_LOOPBACK;
 
     bool success = true;
-    // Convert IPv4 and IPv6 addresses from text to binary form
-    if (inet_pton(AF_INET, address, &saddr.sin_addr) <= 0) {
-	    printf("<inet_pton> : Invalid address /or Address not supported \n");
-        success = false;
-    }
 
-    if (connect (connection->connectionSocket, (struct sockaddr *)&saddr, sizeof(saddr)) < 0) {
+    struct hostent *he;
+
+    he = gethostbyname(address);
+    if(he == 0) {
+        perror("gethostbyname");
+        return 0;
+    }
+    char *addr = (char *)&sa.sin_addr;
+    addr[0] = he->h_addr_list[0][0];
+    addr[1] = he->h_addr_list[0][1];
+    addr[2] = he->h_addr_list[0][2];
+    addr[3] = he->h_addr_list[0][3];
+
+    if (connect (connection->connectionSocket, (struct sockaddr *)&sa, sizeof(sa)) < 0) {
         perror("connect");
         success = false;
     }
