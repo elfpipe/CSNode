@@ -182,14 +182,13 @@ int CSNode::clientPUSH (CSNode::CSConnection *connection, const char *filename)
     char buffer[bufSize];
     int bytes, total = 0;
     //this below is mirrored in serverPUSH
-    while (total < size && (bytes = read(fd, buffer, bufSize)) > 0) {
+    while ((bytes = read(fd, buffer, bufSize)) > 0) {
         total += bytes;
         //first fill the buffer (in case it was already non-empty)
         connection->readBuffer.fill(buffer, bytes);
         //...then extract from it
         while((bytes = connection->readBuffer.readBytes(buffer, bufSize)) > 0) {
-            bytes = send(connection->connectionSocket, buffer, bytes, 0);
-            cout << "bytes sent : " << bytes << "\n";
+            send(connection->connectionSocket, buffer, bytes, 0);
         }
     }
 
@@ -312,8 +311,7 @@ int CSNode::serverPUSH (CSNode::CSConnection *connection, const char *filename) 
         connection->readBuffer.fill(buffer, bytes);
         //...then extract from it
         while((bytes = connection->readBuffer.readBytes(buffer, bufSize)) > 0) {
-            bytes = write(fd, buffer, bytes);
-            cout << "bytes written to disk : " << bytes << "\n";
+            write(fd, buffer, bytes);
         }
     }
 

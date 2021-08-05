@@ -4,6 +4,7 @@
 #include <cstring>
 // #include <memory.h>
 using namespace std;
+#define MIN(x,y) ((x) < (y) ? (x) : (y))
 class Buffer {
 private:
     char *buffer;
@@ -21,7 +22,7 @@ public:
         if (buffer) free (buffer);
         buffer = newBuffer;
     }
-    string read (char limiter = '\3') {
+    string readString (char limiter = '\3') {
         if (!buffer) return string();
         bool hit = false;
         int limit = -1;
@@ -38,6 +39,12 @@ public:
         readBuffer[limit] = '\0';
         cut (limit + 1);
         return string(readBuffer);
+    }
+    int readBytes(char *outBuffer, int bufferSize) {
+        int actualSize = MIN(size, bufferSize);
+        memcpy(outBuffer, buffer, actualSize);
+        cut(actualSize);
+        return actualSize;
     }
     void cut (int amount) {
         char *newBuffer = (char *) malloc (size - amount);
