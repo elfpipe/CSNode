@@ -54,5 +54,10 @@ public:
 
     int clientPUSH (CSConnection *connection, const char *filename);
     int serverPUSH (CSConnection *connection, const char *filename); // PUSH from client
+
+    void clientPUSHDIR (CSConnection *connection, const char *dirname);
+    
+    void remoteCHDIR (CSConnection *connection, const char *dirname);
+    string remoteGETCWD (CSConnection *connection);
 };
 #endif
