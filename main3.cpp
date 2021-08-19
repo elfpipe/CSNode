@@ -5,7 +5,7 @@ int main(int argc, char *argv[]) {
     CSNode node;
     CSNode::CSConnection *connection = 0;
 
-    printf("Commands: SERVE UNSERVE CALL CLOSE MESSAGE EXIT PUSH PULL\n");
+    printf("Commands: SERVE UNSERVE CALL CLOSE MESSAGE PUSH PUSHDIR PULL CHDIR CWDIR MKDIR EXIT\n");
     
     do {
         char command[1024] = "";

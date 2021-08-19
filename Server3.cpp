@@ -10,7 +10,7 @@ void Server::startThread () {
     cout << "Accepting calls...\n";
     CSNode::CSConnection *connection = node->waitForIncomming (node->port);
     if (connection) {
-        cout << "Incomming call(!)...\n";
+        cout << "Incomming call from " << connection->identityString << "\n";
         // cout << "<message> : " << _this->node->readSentence (connection, '\3') << "\n";
         // _this->node->writeSentence (connection, "CLOSE");
         node->serverCommand (connection);
