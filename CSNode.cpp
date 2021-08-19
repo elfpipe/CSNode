@@ -3,7 +3,8 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <dirent.h>
-
+#include <sys/types.h>
+#include <sys/stat.h>
 bool CSNode::doBind (int port) {
     //if (hasBinding) return true;
 
@@ -220,7 +221,11 @@ void CSNode::clientPUSHDIR (CSNode::CSConnection *connection, const char *dirnam
     }
 
     string cwd = remoteGETCWD(connection);    
+    remoteMKDIR(connection, dirname);
     remoteCHDIR(connection, dirname);
+
+    string localcwd = localGETCWD();
+    localCHDIR(dirname);
 
     while ((dp = readdir(dirp)) != 0) {
         DIR *ndirp;
@@ -229,11 +234,14 @@ void CSNode::clientPUSHDIR (CSNode::CSConnection *connection, const char *dirnam
             continue;
         if ((ndirp = opendir(dp->d_name)) == 0) {
             printf("pushing file\n");
-            // clientPUSH(connection, dp->d_name);
+            string message = "PUSH ";
+            message += dp->d_name;
+            writeSentence(connection, message);
+            clientPUSH(connection, dp->d_name);
         } else {
             closedir(ndirp);
             printf("directory - recursive\n");
-            // clientPUSHDIR(connection, dp->d_name);
+            clientPUSHDIR(connection, dp->d_name);
         }
     }
     closedir(dirp);
@@ -241,15 +249,32 @@ void CSNode::clientPUSHDIR (CSNode::CSConnection *connection, const char *dirnam
     remoteCHDIR(connection, cwd.c_str());
 }
 
+string CSNode::remoteGETCWD(CSNode::CSConnection *connection) {
+    writeSentence(connection, "GETCWD");
+    return readSentence(connection);
+}
 void CSNode::remoteCHDIR(CSNode::CSConnection *connection, const char *dirname) {
     string message = "CHDIR ";
     message += dirname;
     writeSentence(connection, message);
 }
+void CSNode::remoteMKDIR(CSNode::CSConnection *connection, string dirname) {
+    string message = "MKDIR ";
+    message += dirname;
+    writeSentence(connection, message);
+}
 
-string CSNode::remoteGETCWD(CSNode::CSConnection *connection) {
-    writeSentence(connection, "GETCWD");
-    return readSentence(connection);
+string CSNode::localGETCWD() {
+    cout << "<GETCWD>\n";
+    char buffer[PATH_MAX];
+    getcwd(buffer, PATH_MAX);
+    return string(buffer);
+}
+void CSNode::localCHDIR(string newdir) {
+    int status = chdir(newdir.c_str());
+    if (status == 0) {
+        cout << "Sucecss (localCHDIR)\n";
+    }
 }
 CSNode::CSConnection *CSNode::clientCommand(string command, CSNode::CSConnection *connection = 0) {
     astream a(command);
@@ -388,6 +413,8 @@ void CSNode::serverCommand (CSConnection *connection) {
     bool end = false;
     while(!end) {
         string message = readSentence(connection);
+        cout << "Message : " << message << "\n";
+        
         astream a(message);
         vector<string> argv = a.split(' ');
         string keyword = argv[0];
@@ -414,13 +441,26 @@ void CSNode::serverCommand (CSConnection *connection) {
                 cout << "Usage : CHDIR <dirname>\n";
             } else {
                 cout << "<CHDIR> : " << argv[1] << "\n";
-                chdir(argv[1].c_str());
+                int status = chdir(argv[1].c_str());
+                if(status == 0) {
+                    cout << "Success (CHDIR)\n";
+                }
             }
         } else if (!keyword.compare("GETCWD")) {
             cout << "<GETCWD>\n";
             char buffer[PATH_MAX];
             getcwd(buffer, PATH_MAX);
             writeSentence(connection, string(buffer));
+        } else if (!keyword.compare("MKDIR")) {
+            if(argv.size() < 2) {
+                cout << "Usage : MKDIR <dirname>\n";
+            } else {
+                cout << "<MKDIR>\n";
+                int status = mkdir(argv[1].c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+                if(status == 0) {
+                    cout << "Success (MKDIR)\n";
+                }
+            }
         }
     }
     printf("> "); //reinsert the prompt

@@ -57,7 +57,10 @@ public:
 
     void clientPUSHDIR (CSConnection *connection, const char *dirname);
     
-    void remoteCHDIR (CSConnection *connection, const char *dirname);
     string remoteGETCWD (CSConnection *connection);
+    void remoteCHDIR (CSConnection *connection, const char *dirname);
+    void remoteMKDIR (CSConnection *connection, string dirname);
+    string localGETCWD();
+    void localCHDIR (string newdir);
 };
 #endif
