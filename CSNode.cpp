@@ -254,6 +254,7 @@ void CSNode::clientPUSHDIR (CSNode::CSConnection *connection, const char *dirnam
     }
     closedir(dirp);
 
+    localCHDIR(localcwd);
     remoteCHDIR(connection, cwd.c_str());
 }
 
