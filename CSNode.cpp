@@ -392,16 +392,17 @@ int CSNode::serverPUSH (CSNode::CSConnection *connection, const char *filename) 
     if (size <= connection->readBuffer.numberOfBytes()) {
         bytes = write(fd, buffer, size);
         cout << "bytes written to disk : " << bytes << "\n";
+        total += bytes;
         goto call;
     }
-    while (total < size && (bytes = recv(connection->connectionSocket, buffer, bufSize, 0)) > 0) {
-        total += bytes;
+    while (total < size && (bytes = recv(connection->connectionSocket, buffer, MIN(bufSize, size-total), 0)) > 0) {
         //first fill the buffer (in case it was already non-empty)
         connection->readBuffer.fill(buffer, bytes);
         //...then extract from it
-        while((bytes = connection->readBuffer.readBytes(buffer, bufSize)) > 0) {
+        while((bytes = connection->readBuffer.readBytes(buffer, MIN(bufSize, size-total))) > 0) {
             bytes = write(fd, buffer, bytes);
             cout << "bytes written to disk : " << bytes << "\n";
+            total += bytes;
         }
     }
 
