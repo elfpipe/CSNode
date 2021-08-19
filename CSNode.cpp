@@ -390,7 +390,8 @@ int CSNode::serverPUSH (CSNode::CSConnection *connection, const char *filename) 
     int bytes, total = 0;
 
     if (size <= connection->readBuffer.numberOfBytes()) {
-        bytes = write(fd, buffer, size);
+        bytes = connection->readBuffer.readBytes(buffer, size);
+        bytes = write(fd, buffer, bytes);
         cout << "bytes written to disk : " << bytes << "\n";
         total += bytes;
         goto call;
