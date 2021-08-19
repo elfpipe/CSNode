@@ -1,5 +1,4 @@
 #include <unistd.h>
-#include <poll.h>
 #include <iostream>
 #include <strings.h>
 #include "CSNode.hpp"
