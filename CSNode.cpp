@@ -451,7 +451,7 @@ void CSNode::serverCommand (CSConnection *connection) {
             if(argv.size() < 2) {
                 cout << "Usage : MKDIR <dirname>\n";
             } else {
-                cout << "<MKDIR>\n";
+                cout << "<MKDIR> : " << argv[1] <<  "\n";
                 int status = mkdir(argv[1].c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
                 if(status == 0) {
                     // cout << "Success (MKDIR)\n";
