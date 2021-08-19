@@ -139,6 +139,9 @@ string CSNode::readSentence (CSConnection *connection, char stopCharacter) { //E
     if (test.length())
         return test;
 
+    string str = connection->readBuffer.readString();
+    if(str.length() > 0) return str;
+
     while ((bytes = recv(connection->connectionSocket, buffer, Bufsize, 0)) >= 0) {
         if (bytes < 0) {
             perror ("recv)");
@@ -376,7 +379,7 @@ int CSNode::serverPUSH (CSNode::CSConnection *connection, const char *filename) 
 
     printf("<read file> : %s , size %d\n", filename, size);
     //read file to disk
-    int fd = open (filename, O_CREAT|O_WRONLY|O_TRUNC); //read, write and execute permission
+    int fd = open(filename, O_RDWR|O_CREAT, 0666); //read, write and execute permission
     if (fd < 0) {
 	    perror("open");
 	    return -1;
@@ -386,6 +389,11 @@ int CSNode::serverPUSH (CSNode::CSConnection *connection, const char *filename) 
     char buffer[bufSize];
     int bytes, total = 0;
 
+    if (size <= connection->readBuffer.numberOfBytes()) {
+        bytes = write(fd, buffer, size);
+        cout << "bytes written to disk : " << bytes << "\n";
+        goto call;
+    }
     while (total < size && (bytes = recv(connection->connectionSocket, buffer, bufSize, 0)) > 0) {
         total += bytes;
         //first fill the buffer (in case it was already non-empty)
@@ -397,6 +405,7 @@ int CSNode::serverPUSH (CSNode::CSConnection *connection, const char *filename) 
         }
     }
 
+    call:
     if (bytes < 0) {
         perror ("recv)");
     }

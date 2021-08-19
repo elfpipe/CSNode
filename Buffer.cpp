@@ -58,6 +58,9 @@ public:
             if (buffer[i] == character) return true;
         return false;
     }
+    int numberOfBytes() {
+        return size;
+    }
 };
 #endif //BUFFER_HPP
 
