@@ -126,7 +126,6 @@ CSNode::CSConnection *CSNode::connectToPeer (const char *address, int port) {
 void CSNode::closeConnection (CSNode::CSConnection *connection) {
     if (connection) {
         close (connection->connectionSocket);
-        delete connection;
     }
 }
 
