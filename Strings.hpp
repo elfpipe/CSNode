@@ -112,6 +112,12 @@ public:
         ss.seekg(pos);
         return result;
     }
+    bool contains(char c) {
+        if (ss.str().find(c) != std::string::npos)
+            return true;
+        else
+            return false;
+    }
 };
 
 #if 0

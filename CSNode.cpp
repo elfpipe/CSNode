@@ -165,6 +165,12 @@ bool CSNode::writeSentence (CSConnection *connection, string sentence) {
 
 int CSNode::clientPUSH (CSNode::CSConnection *connection, const char *filename)
 {
+    astream fn(filename);
+    if(fn.contains('/') || fn.contains(':')) {
+        cout << "clientPUSH : Please avoid using paths as descriptors.\n";
+        return -1;
+    }
+
     int fd = open (filename,  O_RDONLY);
     if (fd < 0) {
         writeSentence(connection, "0");
@@ -211,6 +217,12 @@ int CSNode::clientPUSH (CSNode::CSConnection *connection, const char *filename)
 }
 
 void CSNode::clientPUSHDIR (CSNode::CSConnection *connection, const char *dirname) {
+    astream fn(dirname);
+    if(fn.contains('/') || fn.contains(':')) {
+        cout << "clientPUSHDIR : Please avoid using paths as descriptors.\n";
+        return;
+    }
+
     DIR *dirp;
     struct dirent *dp;
 
@@ -357,6 +369,12 @@ CSNode::CSConnection *CSNode::clientCommand(string command, CSNode::CSConnection
 
 int CSNode::serverPUSH (CSNode::CSConnection *connection, const char *filename) // PUSH from client
 {
+    astream fn(filename);
+    if(fn.contains('/') || fn.contains(':')) {
+        cout << "serverPUSH : Please avoid using paths as descriptors.\n";
+        return -1;
+    }
+
     //read size from connect
     string sizestr = readSentence(connection);
     int size = atoi(sizestr.c_str());
