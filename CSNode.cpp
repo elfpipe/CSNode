@@ -194,23 +194,31 @@ int CSNode::clientPUSH (CSNode::CSConnection *connection, const char *filename)
 
     int bufSize = 4096;
     char buffer[bufSize];
-    int bytes, total = 0;
+    int bytes, totalRead = 0, totalSent = 0;
     //this below is mirrored in serverPUSH
-    while (total < size && (bytes = read(fd, buffer, bufSize)) > 0) {
-        total += bytes;
+    while (totalSent == totalRead && totalRead < size && (bytes = read(fd, buffer, bufSize)) > 0) {
+        totalRead += bytes;
         //first fill the buffer (in case it was already non-empty)
         connection->readBuffer.fill(buffer, bytes);
         //...then extract from it
         while((bytes = connection->readBuffer.readBytes(buffer, bufSize)) > 0) {
+            cout << ",";
             bytes = send(connection->connectionSocket, buffer, bytes, 0);
+            if(bytes < 0) perror("send");
+            totalSent += bytes;
+            cout << ".";
         }
     }
+    if(totalSent != totalRead)
+        cout << "Mismatch between bytes read and bytes sent.\n";
+    else
+        cout << "ok.\n";
 
     if (bytes < 0) {
         perror ("read");
     }
 
-    if (total == size)
+    if (totalSent == size)
         printf("<PUSH> : file sent\n");
     else
         printf("<PUSH> : incomplete send\n");
