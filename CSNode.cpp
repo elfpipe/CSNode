@@ -6,7 +6,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 bool CSNode::doBind (int port) {
-    //if (hasBinding) return true;
+    if (hasBinding) {
+        unBind();
+    }
 
     // server address
     this->port = port;
