@@ -6,7 +6,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 bool CSNode::doBind (int port) {
-    //if (hasBinding) return true;
+    if (hasBinding) return true;
 
     // server address
     this->port = port;
@@ -127,6 +127,7 @@ void CSNode::closeConnection (CSNode::CSConnection *connection) {
     if (connection) {
         close (connection->connectionSocket);
     }
+    unBind();
 }
 
 string CSNode::readSentence (CSConnection *connection, char stopCharacter) { //ETX
@@ -284,8 +285,8 @@ void CSNode::localCHDIR(string newdir) {
 CSNode::CSConnection *CSNode::clientCommand(string command, CSNode::CSConnection *connection = 0) {
     astream a(command);
     string stripped = a.get('\n');
-    a.setString(stripped);
-    vector<string> argv = a.split(' ');
+    astream b(stripped);
+    vector<string> argv = b.split(' ');
     string keyword = argv[0];
 
     cout << "argv[0]: '" << argv[0] << "'\n";
@@ -446,6 +447,7 @@ void CSNode::serverCommand (CSConnection *connection) {
             writeSentence(connection, "CLOSE");
             closeConnection (connection);
             end = true;
+            unBind();
             // exit(0); // abandon...
         } else if (!keyword.compare("PUSH")) {
             serverPUSH(connection, argv[1].c_str());

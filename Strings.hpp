@@ -34,7 +34,6 @@ private:
     stringstream ss;
 public:
     astream(string s) { ss << s; }
-    void setString(string s) { ss << s; }
     vector<string> split(char delim) {
         vector<string> result;
         string line;
