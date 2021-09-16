@@ -12,6 +12,8 @@ int main(int argc, char *argv[]) {
 				string text;
 				ifstream file(argv[++arg]);
 				while (std::getline(file, text)) {
+					if(!text.compare("REPEAT"))
+						file.seekg(0);
 					connection = node.clientCommand(text, connection);
 				}
 			} else {
