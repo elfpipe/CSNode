@@ -15,15 +15,16 @@ public:
         size = 0; buffer = 0;
     }
     void fill (char *content, int contentSize) {
+        if(!contentSize) return;
         char *newBuffer = (char *) malloc (size + contentSize);
-        if (buffer) memcpy (newBuffer, buffer, size);
+        if (buffer && size) memcpy (newBuffer, buffer, size);
         memcpy (newBuffer + size, content, contentSize);
         size += contentSize;
         if (buffer) free (buffer);
         buffer = newBuffer;
     }
     string readString (char limiter = '\3') {
-        if (!buffer) return string();
+        if (!buffer || !size) return string();
         bool hit = false;
         int limit = -1;
         for (int i = 0; i < size; i++) {
@@ -42,15 +43,20 @@ public:
     }
     int readBytes(char *outBuffer, int bufferSize) {
         int actualSize = MIN(size, bufferSize);
-        memcpy(outBuffer, buffer, actualSize);
-        cut(actualSize);
+        if(actualSize > 0) {
+            memcpy(outBuffer, buffer, actualSize);
+            cut(actualSize);
+        }
         return actualSize;
     }
     void cut (int amount) {
-        char *newBuffer = (char *) malloc (size - amount);
-        memcpy (newBuffer, buffer + amount, size - amount);
+        char *newBuffer = 0;
+        if(size > amount) {
+            newBuffer = (char *) malloc (size - amount);
+            memcpy (newBuffer, buffer + amount, size - amount);
+        }
         size -= amount;
-        free (buffer);
+        if(buffer) free (buffer);
         buffer = newBuffer;
     }
     bool contains (const char character = '\3') {
