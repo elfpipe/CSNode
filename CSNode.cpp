@@ -6,9 +6,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 bool CSNode::doBind (int port) {
-    if (hasBinding) {
         unBind();
-    }
 
     // server address
     this->port = port;
@@ -55,9 +53,7 @@ void CSNode::unBind () {
 }
 
 CSNode::CSConnection *CSNode::waitForIncomming(int port) {
-    if(!hasBinding) {
-        doBind(port);
-    }
+    doBind(port);
     CSConnection *connection = new CSConnection;
 
     struct sockaddr_in address;
@@ -213,7 +209,11 @@ int CSNode::clientPUSH (CSNode::CSConnection *connection, const char *filename)
             tv.tv_usec = 0;
             FD_ZERO(&wfds);
             FD_SET(connection->connectionSocket, &wfds);
-            select(connection->connectionSocket+1, 0, &wfds, 0, &tv);
+            int ret = select(connection->connectionSocket+1, 0, &wfds, 0, &tv);
+            if(ret < 0) {
+                perror("select");
+                break;
+            }
             if(FD_ISSET(connection->connectionSocket, &wfds)) {
                 bytes = send(connection->connectionSocket, buffer, bytes, 0);
                 if(bytes < 0) {
@@ -227,7 +227,7 @@ int CSNode::clientPUSH (CSNode::CSConnection *connection, const char *filename)
                 }
                 else totalSent += bytes;
                 cout << ".";
-            }
+            } else break;
         }
         cout << "_";
     }
@@ -334,6 +334,7 @@ CSNode::CSConnection *CSNode::clientCommand(string command, CSNode::CSConnection
             //     serverCommand (connection);
             // }
         }
+        unBind();
     } else if(!keyword.compare("UNSERVE")) {
         cout << "Ending server thread\n";
         server.endThread();
@@ -435,7 +436,7 @@ int CSNode::serverPUSH (CSNode::CSConnection *connection, const char *filename) 
         int bytes2 = write(fd, buffer, bytes1);
 		bytesReceived += bytes1;
         bytesWritten += bytes2;
-		cout << "bytes(*) : " << bytes1 << " " << bytes2 << " " << bytesWritten << " " << bytesReceived << "\n";
+//		cout << "bytes(*) : " << bytes1 << " " << bytes2 << " " << bytesWritten << " " << bytesReceived << "\n";
     }
     while (bytesReceived < size && bytesReceived == bytesWritten) {
         fd_set rfds;
@@ -444,9 +445,12 @@ int CSNode::serverPUSH (CSNode::CSConnection *connection, const char *filename) 
         tv.tv_usec = 0;
         FD_ZERO(&rfds);
         FD_SET(connection->connectionSocket, &rfds);
-        select(connection->connectionSocket+1, &rfds, 0, 0, &tv);
+        int ret = select(connection->connectionSocket+1, &rfds, 0, 0, &tv);
+        if(ret < 0) {
+            perror("select");
+            break;
+        }
         if(FD_ISSET(connection->connectionSocket, &rfds)) {
-            cout << "hello";
             int bytes = 0;
             while (bytes == 0)
                 bytes = recv(connection->connectionSocket, buffer, MIN(bufSize, size-bytesReceived), 0);
@@ -466,8 +470,8 @@ int CSNode::serverPUSH (CSNode::CSConnection *connection, const char *filename) 
                 bytes2 = write(fd, buffer, bytes1);
                 bytesWritten += bytes2;
             }
-			cout << "bytes : " << bytes << " " << bytesWritten << " " << bytesReceived << "\n";
-        }
+//			cout << "bytes : " << bytes << " " << bytesWritten << " " << bytesReceived << "\n";
+        } else break;
         cout << ".";
     }
     cout << "ok.\n";

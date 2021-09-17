@@ -29,6 +29,7 @@ public:
     Server server;
 public:
     struct CSConnection {
+        CSConnection() : isValid(false) {}
         int connectionSocket;
         string identityString;
         Buffer readBuffer;
