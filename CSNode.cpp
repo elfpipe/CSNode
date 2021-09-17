@@ -455,10 +455,11 @@ int CSNode::serverPUSH (CSNode::CSConnection *connection, const char *filename) 
             //first fill the buffer (in case it was already non-empty)
             connection->readBuffer.fill(buffer, bytesReceived);
             //...then extract from it
-            int bytes;
-            while((bytes = connection->readBuffer.readBytes(buffer, MIN(bufSize, size-total))) > 0) {
-                bytesWritten = write(fd, buffer, bytes);
-                total += bytes;
+            int bytes1, bytes2;
+            while((bytes1 = connection->readBuffer.readBytes(buffer, MIN(bufSize, size-total))) > 0) {
+                bytes2 = write(fd, buffer, bytes1);
+                total += bytes2;
+                bytesWritten += bytes2;
             }
         }
     } while (total < size && bytesReceived > 0 && bytesReceived == bytesWritten);
@@ -495,6 +496,10 @@ void CSNode::serverCommand (CSConnection *connection) {
             // exit(0); // abandon...
         } else if (!keyword.compare("PUSH")) {
             serverPUSH(connection, argv[1].c_str());
+            if(!connection->isValid) {
+                delete connection;
+                connection = 0;
+            }
         } else if (!keyword.compare("PULL")) {
 
         } else if (!keyword.compare("CHDIR")) {
