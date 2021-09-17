@@ -466,9 +466,10 @@ int CSNode::serverPUSH (CSNode::CSConnection *connection, const char *filename) 
 
     if(total == size)
         printf("<PUSH> : success\n");
-    else
+    else {
         printf("<PUSH> : Odd file size\n");
-
+        connection->isValid = false;
+    }
     return 0;
 }
 
@@ -499,6 +500,7 @@ void CSNode::serverCommand (CSConnection *connection) {
             if(!connection->isValid) {
                 delete connection;
                 connection = 0;
+                unBind();
             }
         } else if (!keyword.compare("PULL")) {
 
