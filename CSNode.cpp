@@ -428,12 +428,11 @@ int CSNode::serverPUSH (CSNode::CSConnection *connection, const char *filename) 
 
     int bufSize = 4096;
     char buffer[bufSize];
-    int bytesReceived, bytesWritten, total = 0;
+    int bytesReceived = 0, bytesWritten = 0;
 
     if (size <= connection->readBuffer.numberOfBytes()) {
-        int bytes = connection->readBuffer.readBytes(buffer, size);
-        bytes = write(fd, buffer, bytes);
-        total += bytes;
+        bytesReceived = connection->readBuffer.readBytes(buffer, size);
+        bytesWritten = write(fd, buffer, bytesReceived);
     } else
     do {
         fd_set rfds;
@@ -444,27 +443,29 @@ int CSNode::serverPUSH (CSNode::CSConnection *connection, const char *filename) 
         FD_SET(connection->connectionSocket, &rfds);
         select(connection->connectionSocket+1, &rfds, 0, 0, &tv);
         if(FD_ISSET(connection->connectionSocket, &rfds)) {
-            bytesReceived = recv(connection->connectionSocket, buffer, MIN(bufSize, size-total), 0);
-            if (bytesReceived < 0) {
+            int bytes = recv(connection->connectionSocket, buffer, MIN(bufSize, size-bytesReceived), 0);
+            if (bytes < 0) {
                 if(errno == ECONNRESET) {
                     printf("send: connection reset");
                     connection->isValid = false;
                     break;
                 } else perror ("recv)");
             }
+            bytesReceived += bytes;
             //first fill the buffer (in case it was already non-empty)
-            connection->readBuffer.fill(buffer, bytesReceived);
+            connection->readBuffer.fill(buffer, bytes);
             //...then extract from it
             int bytes1, bytes2;
-            while((bytes1 = connection->readBuffer.readBytes(buffer, MIN(bufSize, size-total))) > 0) {
+            while((bytes1 = connection->readBuffer.readBytes(buffer, bufSize)) > 0) {
                 bytes2 = write(fd, buffer, bytes1);
-                total += bytes2;
                 bytesWritten += bytes2;
             }
         }
-    } while (total < size && bytesReceived > 0 && bytesReceived == bytesWritten);
+        cout << ".";
+    } while (bytesReceived < size && bytesReceived > 0 && bytesReceived == bytesWritten);
+    cout << "ok.\n";
 
-    if(total == size)
+    if(bytesWritten == size)
         printf("<PUSH> : success\n");
     else {
         printf("<PUSH> : Odd file size\n");
