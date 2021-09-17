@@ -430,11 +430,14 @@ int CSNode::serverPUSH (CSNode::CSConnection *connection, const char *filename) 
     char buffer[bufSize];
     int bytesReceived = 0, bytesWritten = 0;
 
-    if (size <= connection->readBuffer.numberOfBytes()) {
-        bytesReceived = connection->readBuffer.readBytes(buffer, size);
-        bytesWritten = write(fd, buffer, bytesReceived);
-    } else
-    do {
+    while (bytesReceived == bytesWritten && bytesReceived < size && connection->readBuffer.numberOfBytes() > 0) {
+		int bytes1 = connection->readBuffer.readBytes(buffer, MIN(size-bytesReceived, bufSize));
+        int bytes2 = write(fd, buffer, bytes1);
+		bytesReceived += bytes1;
+        bytesWritten += bytes2;
+		cout << "bytes(*) : " << bytes1 << " " << bytes2 << " " << bytesWritten << " " << bytesReceived << "\n";
+    }
+    while (bytesReceived < size && bytesReceived == bytesWritten) {
         fd_set rfds;
         struct timeval tv;
         tv.tv_sec = 5;
@@ -459,22 +462,21 @@ int CSNode::serverPUSH (CSNode::CSConnection *connection, const char *filename) 
             connection->readBuffer.fill(buffer, bytes);
             //...then extract from it
             int bytes1, bytes2;
-            while((bytes1 = connection->readBuffer.readBytes(buffer, bufSize)) > 0) {
+            while((bytes1 = connection->readBuffer.readBytes(buffer, MIN(bufSize, size - bytesWritten))) > 0) {
                 bytes2 = write(fd, buffer, bytes1);
                 bytesWritten += bytes2;
             }
-            cout << "bytes : " << bytesReceived << bytesWritten;
+			cout << "bytes : " << bytes << " " << bytesWritten << " " << bytesReceived << "\n";
         }
         cout << ".";
-    } while (bytesReceived < size && bytesReceived == bytesWritten);
+    }
     cout << "ok.\n";
 
     if(bytesWritten == size)
         printf("<PUSH> : success\n");
-    else {
+    else
         printf("<PUSH> : Odd file size\n");
-        connection->isValid = false;
-    }
+
     return 0;
 }
 
@@ -507,6 +509,7 @@ void CSNode::serverCommand (CSConnection *connection) {
                 connection = 0;
                 unBind();
             }
+            end = true;
         } else if (!keyword.compare("PULL")) {
 
         } else if (!keyword.compare("CHDIR")) {
