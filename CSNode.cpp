@@ -463,6 +463,7 @@ int CSNode::serverPUSH (CSNode::CSConnection *connection, const char *filename) 
                 bytes2 = write(fd, buffer, bytes1);
                 bytesWritten += bytes2;
             }
+            cout << "bytes : " << bytesReceived << bytesWritten;
         }
         cout << ".";
     } while (bytesReceived < size && bytesReceived == bytesWritten);
