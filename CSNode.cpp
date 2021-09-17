@@ -443,6 +443,7 @@ int CSNode::serverPUSH (CSNode::CSConnection *connection, const char *filename) 
         FD_SET(connection->connectionSocket, &rfds);
         select(connection->connectionSocket+1, &rfds, 0, 0, &tv);
         if(FD_ISSET(connection->connectionSocket, &rfds)) {
+            cout << "hello";
             int bytes = 0;
             while (bytes == 0)
                 bytes = recv(connection->connectionSocket, buffer, MIN(bufSize, size-bytesReceived), 0);
