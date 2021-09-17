@@ -443,7 +443,9 @@ int CSNode::serverPUSH (CSNode::CSConnection *connection, const char *filename) 
         FD_SET(connection->connectionSocket, &rfds);
         select(connection->connectionSocket+1, &rfds, 0, 0, &tv);
         if(FD_ISSET(connection->connectionSocket, &rfds)) {
-            int bytes = recv(connection->connectionSocket, buffer, MIN(bufSize, size-bytesReceived), 0);
+            int bytes = 0;
+            while (bytes == 0)
+                bytes = recv(connection->connectionSocket, buffer, MIN(bufSize, size-bytesReceived), 0);
             if (bytes < 0) {
                 if(errno == ECONNRESET) {
                     printf("send: connection reset");
@@ -462,7 +464,7 @@ int CSNode::serverPUSH (CSNode::CSConnection *connection, const char *filename) 
             }
         }
         cout << ".";
-    } while (bytesReceived < size && bytesReceived > 0 && bytesReceived == bytesWritten);
+    } while (bytesReceived < size && bytesReceived == bytesWritten);
     cout << "ok.\n";
 
     if(bytesWritten == size)
