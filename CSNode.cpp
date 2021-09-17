@@ -122,6 +122,7 @@ CSNode::CSConnection *CSNode::connectToPeer (const char *address, int port) {
     }
 
     connection->identityString = address;
+    connection->isValid = true;
     return connection;
 }
 
@@ -206,10 +207,27 @@ int CSNode::clientPUSH (CSNode::CSConnection *connection, const char *filename)
         cout << "'";
         while((bytes = connection->readBuffer.readBytes(buffer, bufSize)) > 0) {
             cout << ",";
-            bytes = send(connection->connectionSocket, buffer, bytes, 0);
-            if(bytes < 0) perror("send");
-            totalSent += bytes;
-            cout << ".";
+            fd_set wfds;
+            struct timeval tv;
+            tv.tv_sec = 5;
+            tv.tv_usec = 0;
+            FD_ZERO(&wfds);
+            FD_SET(connection->connectionSocket, &wfds);
+            select(connection->connectionSocket+1, 0, &wfds, 0, &tv);
+            if(FD_ISSET(connection->connectionSocket, &wfds)) {
+                bytes = send(connection->connectionSocket, buffer, bytes, 0);
+                if(bytes < 0) {
+                    if(errno == ECONNRESET) {
+                        printf("send: connection reset");
+                        connection->isValid = false;
+                        break;
+                    } else {
+                        perror("send");
+                    }
+                }
+                else totalSent += bytes;
+                cout << ".";
+            }
         }
         cout << "_";
     }
@@ -345,7 +363,7 @@ CSNode::CSConnection *CSNode::clientCommand(string command, CSNode::CSConnection
             writeSentence (connection, stripped);
         } else cout << "No connection\n";
     } else if (!keyword.compare("CLOSE")) {
-        if(connection) {
+        if(connection && connection->isValid) {
             writeSentence(connection, "CLOSE");
             closeConnection(connection);
             cout << "Connection closed\n";
@@ -362,6 +380,10 @@ CSNode::CSConnection *CSNode::clientCommand(string command, CSNode::CSConnection
         if(connection) {
             writeSentence (connection, stripped);
             clientPUSH (connection, argv[1].c_str());
+            if(!connection->isValid) {
+                delete connection;
+                connection = 0;
+            }
         } else cout << "No connection\n";
     } else if (!keyword.compare("PUSHDIR")) {
         if(connection) {
@@ -406,28 +428,40 @@ int CSNode::serverPUSH (CSNode::CSConnection *connection, const char *filename) 
 
     int bufSize = 4096;
     char buffer[bufSize];
-    int bytes, total = 0;
+    int bytesReceived, bytesWritten, total = 0;
 
     if (size <= connection->readBuffer.numberOfBytes()) {
-        bytes = connection->readBuffer.readBytes(buffer, size);
+        int bytes = connection->readBuffer.readBytes(buffer, size);
         bytes = write(fd, buffer, bytes);
         total += bytes;
-        goto call;
-    }
-    while (total < size && (bytes = recv(connection->connectionSocket, buffer, MIN(bufSize, size-total), 0)) > 0) {
-        //first fill the buffer (in case it was already non-empty)
-        connection->readBuffer.fill(buffer, bytes);
-        //...then extract from it
-        while((bytes = connection->readBuffer.readBytes(buffer, MIN(bufSize, size-total))) > 0) {
-            bytes = write(fd, buffer, bytes);
-            total += bytes;
+    } else
+    do {
+        fd_set rfds;
+        struct timeval tv;
+        tv.tv_sec = 5;
+        tv.tv_usec = 0;
+        FD_ZERO(&rfds);
+        FD_SET(connection->connectionSocket, &rfds);
+        select(connection->connectionSocket+1, &rfds, 0, 0, &tv);
+        if(FD_ISSET(connection->connectionSocket, &rfds)) {
+            bytesReceived = recv(connection->connectionSocket, buffer, MIN(bufSize, size-total), 0);
+            if (bytesReceived < 0) {
+                if(errno == ECONNRESET) {
+                    printf("send: connection reset");
+                    connection->isValid = false;
+                    break;
+                } else perror ("recv)");
+            }
+            //first fill the buffer (in case it was already non-empty)
+            connection->readBuffer.fill(buffer, bytesReceived);
+            //...then extract from it
+            int bytes;
+            while((bytes = connection->readBuffer.readBytes(buffer, MIN(bufSize, size-total))) > 0) {
+                bytesWritten = write(fd, buffer, bytes);
+                total += bytes;
+            }
         }
-    }
-
-    call:
-    if (bytes < 0) {
-        perror ("recv)");
-    }
+    } while (total < size && bytesReceived > 0 && bytesReceived == bytesWritten);
 
     if(total == size)
         printf("<PUSH> : success\n");

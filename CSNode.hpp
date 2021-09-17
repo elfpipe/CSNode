@@ -32,6 +32,7 @@ public:
         int connectionSocket;
         string identityString;
         Buffer readBuffer;
+        bool isValid;
     };
 
 public:
