@@ -485,6 +485,7 @@ int CSNode::serverPUSH (CSNode::CSConnection *connection, const char *filename) 
     else
         printf("<PUSH> : Odd file size\n");
 
+    close(fd);
     return 0;
 }
 

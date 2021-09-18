@@ -16,7 +16,7 @@ int main(int argc, char *argv[]) {
 						file.close();
 						file.open(argv[arg]);
 					}
-					else connection = node.clientCommand(text, connection);
+					else if (text.length()) connection = node.clientCommand(text, connection);
 				}
 			} else {
 				string command = argv[arg];
