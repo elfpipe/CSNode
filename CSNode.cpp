@@ -134,12 +134,9 @@ string CSNode::readSentence (CSConnection *connection, char stopCharacter) { //E
     const int Bufsize = 1024;
     int bytes; char buffer[1024];
 
-    string test = connection->readBuffer.readString();
-    if (test.length())
-        return test;
-
     string str = connection->readBuffer.readString();
-    if(str.length() > 0) return str;
+    if (str.length())
+        return str;
 
     while ((bytes = recv(connection->connectionSocket, buffer, Bufsize, 0)) >= 0) {
         if (bytes < 0) {
@@ -191,18 +188,16 @@ int CSNode::clientPUSH (CSNode::CSConnection *connection, const char *filename)
 
     int bufSize = 4096;
     char buffer[bufSize];
-    int bytes, totalRead = 0, totalSent = 0;
+    int totalRead = 0, totalSent = 0;
     //this below is mirrored in serverPUSH
-    while (totalSent == totalRead && totalRead < size && (bytes = read(fd, buffer, bufSize)) > 0) {
-        if (bytes < 0) perror ("read");
+    while (totalSent == totalRead && totalRead < size) {
+        int bytes = read(fd, buffer, bufSize);
+        if (bytes < 0) { perror ("read"); break; }
         totalRead += bytes;
-        cout << "-";
         //first fill the buffer (in case it was already non-empty)
         connection->readBuffer.fill(buffer, bytes);
         //...then extract from it
-        cout << "'";
         while((bytes = connection->readBuffer.readBytes(buffer, bufSize)) > 0) {
-            cout << ",";
             fd_set wfds;
             struct timeval tv;
             tv.tv_sec = 5;
@@ -218,18 +213,15 @@ int CSNode::clientPUSH (CSNode::CSConnection *connection, const char *filename)
                 bytes = send(connection->connectionSocket, buffer, bytes, 0);
                 if(bytes < 0) {
                     if(errno == ECONNRESET) {
-                        printf("send: connection reset");
                         connection->isValid = false;
-                        break;
-                    } else {
-                        perror("send");
                     }
+                    perror("send");
+                    break;
                 }
                 else totalSent += bytes;
                 cout << ".";
             } else break;
         }
-        cout << "_";
     }
     if(totalSent != totalRead)
         cout << "Mismatch between bytes read and bytes sent.\n";
