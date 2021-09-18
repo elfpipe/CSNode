@@ -54,7 +54,7 @@ printf("hasBinding is true. returning\n");
 }
 
 void CSNode::unBind () {
-    if (hasBinding) close (bindSocket);
+    if (hasBinding) { printf("closing bindSocket..."); close (bindSocket); printf("closed.\n"); }
     hasBinding = false;
 }
 
