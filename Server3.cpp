@@ -6,16 +6,18 @@
 Server::Server (CSNode *node) {
     this->node = node;
 }
-void Server::startThread () {
+void Server::startThread (int port) {
     cout << "Accepting calls...\n";
-    CSNode::CSConnection *connection = node->waitForIncomming (node->port);
+    CSNode::CSConnection *connection = node->waitForIncomming (port);
     if (connection) {
         cout << "Incomming call from " << connection->identityString << "\n";
         // cout << "<message> : " << _this->node->readSentence (connection, '\3') << "\n";
         // _this->node->writeSentence (connection, "CLOSE");
+        node->doBind(port);
         node->serverCommand (connection);
         node->closeConnection (connection);
         cout << "Call completed.\n";
+        node->unBind();
     }
 }
 void *Server::thread(void *dummy) {

@@ -6,8 +6,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 bool CSNode::doBind (int port) {
-        unBind();
-
     // server address
     this->port = port;
     struct sockaddr_in address;
@@ -53,7 +51,6 @@ void CSNode::unBind () {
 }
 
 CSNode::CSConnection *CSNode::waitForIncomming(int port) {
-    doBind(port);
     CSConnection *connection = new CSConnection;
 
     struct sockaddr_in address;
@@ -126,7 +123,6 @@ void CSNode::closeConnection (CSNode::CSConnection *connection) {
     if (connection) {
         close (connection->connectionSocket);
     }
-    unBind();
 }
 
 string CSNode::readSentence (CSConnection *connection, char stopCharacter) { //ETX
@@ -213,10 +209,11 @@ int CSNode::clientPUSH (CSNode::CSConnection *connection, const char *filename)
                 bytes = send(connection->connectionSocket, buffer, bytes, 0);
                 if(bytes < 0) {
                     if(errno == ECONNRESET) {
+                        perror("send");
                         connection->isValid = false;
+                        break;
                     }
                     perror("send");
-                    break;
                 }
                 else totalSent += bytes;
                 cout << ".";
@@ -316,17 +313,8 @@ CSNode::CSConnection *CSNode::clientCommand(string command, CSNode::CSConnection
             cout << "Usage : SERVE <port>\n";
         } else {
             cout << "Server thread started on port " << argv[1] << "....\n";
-
-            doBind(atoi(argv[1].c_str()));
-            server.startThread();
-            // CSNode::CSConnection *newConnection = waitForIncomming (atoi(argv[1].c_str()));
-            // if(newConnection) {
-            //     cout << "Gracefully accepted call from " << newConnection->identityString << " :)\n";
-            //     connection = newConnection;
-            //     serverCommand (connection);
-            // }
+            server.startThread(atoi(argv[1].c_str()));
         }
-        unBind();
     } else if(!keyword.compare("UNSERVE")) {
         cout << "Ending server thread\n";
         server.endThread();
@@ -496,14 +484,12 @@ void CSNode::serverCommand (CSConnection *connection) {
             writeSentence(connection, "CLOSE");
             closeConnection (connection);
             end = true;
-            unBind();
             // exit(0); // abandon...
         } else if (!keyword.compare("PUSH")) {
             serverPUSH(connection, argv[1].c_str());
             if(!connection->isValid) {
                 delete connection;
                 connection = 0;
-                unBind();
             }
             end = true;
         } else if (!keyword.compare("PULL")) {

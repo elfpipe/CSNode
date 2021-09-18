@@ -12,7 +12,7 @@ private:
     int exitPipe[2];
 public:
     Server (CSNode *node);
-    void startThread ();
+    void startThread (int port);
     static void *thread(void *dummy);
     void endThread();
 };
