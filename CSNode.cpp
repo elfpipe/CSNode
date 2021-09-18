@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 bool CSNode::doBind (int port) {
+    unBind();
     // server address
     this->port = port;
     struct sockaddr_in address;
@@ -28,6 +29,7 @@ printf("socket successfull\n");
         close (bindSocket);
         return false;
     }
+    hasBinding = true;
 
 printf("bind successfull\n");
     //set reuseaddr
@@ -47,7 +49,6 @@ printf("setsockopt successfull\n");
     }
 printf("listen successfull\n");
 
-    hasBinding = true;
 printf("hasBinding is true. returning\n");
     return true;
 }
