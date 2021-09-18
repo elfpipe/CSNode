@@ -6,7 +6,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 bool CSNode::doBind (int port) {
-    unBind();
     // server address
     this->port = port;
     struct sockaddr_in address;
@@ -189,13 +188,14 @@ int CSNode::clientPUSH (CSNode::CSConnection *connection, const char *filename)
     //this below is mirrored in serverPUSH
     try {
     while (totalSent == totalRead && totalRead < size) {
-        int bytes = read(fd, buffer, bufSize);
-        if (bytes < 0) { perror ("read"); break; }
-        totalRead += bytes;
+        int bytesRead = read(fd, buffer, bufSize);
+        if (bytesRead < 0) { perror ("read"); break; }
+        totalRead += bytesRead;
         //first fill the buffer (in case it was already non-empty)
-        connection->readBuffer.fill(buffer, bytes);
+        connection->readBuffer.fill(buffer, bytesRead);
         //...then extract from it
-        while((bytes = connection->readBuffer.readBytes(buffer, bufSize)) > 0) {
+        int bytesAvailable;
+        while((bytesAvailable = connection->readBuffer.readBytes(buffer, bufSize)) > 0) {
             for(int i = 0; i < 5; i++) {
                 fd_set wfds;
                 struct timeval tv;
@@ -205,19 +205,23 @@ int CSNode::clientPUSH (CSNode::CSConnection *connection, const char *filename)
                 FD_SET(connection->connectionSocket, &wfds);
                 int ret = select(connection->connectionSocket+1, 0, &wfds, 0, &tv);
                 if(ret < 0) {
-                    perror("select");
                     throw(1);
                 }
+                if(ret == 0) printf("timeout.\n");
                 if(FD_ISSET(connection->connectionSocket, &wfds)) {
-                    bytes = send(connection->connectionSocket, buffer, bytes, 0);
-                    if(bytes < 0) {
-                        if(errno == ECONNRESET) {
-                            connection->isValid = false;                        
+                    int bytesSent = 0;
+                    while (bytesSent < bytesAvailable) {
+                        int bytes = send(connection->connectionSocket, buffer + bytesSent, bytesAvailable - bytesSent, 0);
+                        if(bytes < 0) {
+                            if(errno == ECONNRESET) {
+                                connection->isValid = false;                        
+                            }
+                            throw(0);
                         }
-                        perror("send");
-                        throw(0);
+                        bytesSent += bytes;
+                        if(bytesSent < bytesAvailable) printf("Non-complete send.\n");
                     }
-                    else totalSent += bytes;
+                    totalSent += bytesSent;
                     cout << ".";
                     break; //successfull send
                 }

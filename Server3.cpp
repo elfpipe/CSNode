@@ -16,6 +16,7 @@ void Server::startThread (int port) {
         // _this->node->writeSentence (connection, "CLOSE");
         node->serverCommand (connection);
         node->closeConnection (connection);
+        delete connection;
         cout << "Call completed.\n";
     }
     node->unBind();
