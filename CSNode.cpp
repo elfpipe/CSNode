@@ -14,12 +14,14 @@ bool CSNode::doBind (int port) {
 	address.sin_addr.s_addr = INADDR_ANY;
     int addrlen = sizeof(address);
 
+printf("doBind\n");
     // Creating socket file descriptor
     if ((bindSocket = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
         perror("socket");
         return false;
     }
 
+printf("socket successfull\n");
     //do binding to INADDR_ANY
     if (bind (bindSocket, (struct sockaddr *)&address, sizeof(address)) < 0) {
         perror("bind");
@@ -27,6 +29,7 @@ bool CSNode::doBind (int port) {
         return false;
     }
 
+printf("bind successfull\n");
     //set reuseaddr
     int j;
     if(setsockopt(bindSocket, SOL_SOCKET, SO_REUSEADDR, &j, sizeof(int)) < 0 ) {
@@ -35,13 +38,17 @@ bool CSNode::doBind (int port) {
             return false;
 		}
 
+printf("setsockopt successfull\n");
     //listen
     if (listen(bindSocket, 10) < 0) {
         close (bindSocket);
         perror("listen");
         return false;
     }
+printf("listen successfull\n");
+
     hasBinding = true;
+printf("hasBinding is true. returning\n");
     return true;
 }
 
