@@ -15,14 +15,20 @@ bool CSNode::doBind (int port) {
 	address.sin_addr.s_addr = INADDR_ANY;
     int addrlen = sizeof(address);
 
-printf("doBind\n");
     // Creating socket file descriptor
     if ((bindSocket = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
         perror("socket");
         return false;
     }
 
-printf("socket successfull\n");
+    //set reuseaddr - remember to to this BEFORE bind! ;)
+    int j;
+    if(setsockopt(bindSocket, SOL_SOCKET, SO_REUSEADDR, &j, sizeof(int)) < 0 ) {
+			perror("setsockopt");
+            close(bindSocket);
+            return false;
+		}
+
     //do binding to INADDR_ANY
     if (bind (bindSocket, (struct sockaddr *)&address, sizeof(address)) < 0) {
         perror("bind");
@@ -31,30 +37,17 @@ printf("socket successfull\n");
     }
     hasBinding = true;
 
-printf("bind successfull\n");
-    //set reuseaddr
-    int j;
-    if(setsockopt(bindSocket, SOL_SOCKET, SO_REUSEADDR, &j, sizeof(int)) < 0 ) {
-			perror("setsockopt");
-            close(bindSocket);
-            return false;
-		}
-
-printf("setsockopt successfull\n");
     //listen
     if (listen(bindSocket, 10) < 0) {
         close (bindSocket);
         perror("listen");
         return false;
     }
-printf("listen successfull\n");
-
-printf("hasBinding is true. returning\n");
     return true;
 }
 
 void CSNode::unBind () {
-    if (hasBinding) { printf("closing bindSocket..."); close (bindSocket); printf("closed.\n"); }
+    if (hasBinding) { close (bindSocket); }
     hasBinding = false;
 }
 
