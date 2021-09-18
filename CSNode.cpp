@@ -440,6 +440,7 @@ int CSNode::serverPUSH (CSNode::CSConnection *connection, const char *filename) 
             FD_ZERO(&rfds);
             FD_SET(connection->connectionSocket, &rfds);
             int ret = select(connection->connectionSocket+1, &rfds, 0, 0, &tv);
+            if(ret == 0) printf("select returned zero.\n");
             if(ret < 0) {
                 throw(1);
             }
