@@ -463,7 +463,8 @@ int CSNode::serverPUSH (CSNode::CSConnection *connection, const char *filename) 
                     bytes2 = write(fd, buffer, bytes1);
                     bytesWritten += bytes2;
                 }
-            } else printf("Mysterious...\n");
+                break;
+            }
         }
         if(i == 5) throw(2);
         cout << ".";
