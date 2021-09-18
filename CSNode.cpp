@@ -187,6 +187,7 @@ int CSNode::clientPUSH (CSNode::CSConnection *connection, const char *filename)
     char buffer[bufSize];
     int totalRead = 0, totalSent = 0;
     //this below is mirrored in serverPUSH
+    try {
     while (totalSent == totalRead && totalRead < size) {
         int bytes = read(fd, buffer, bufSize);
         if (bytes < 0) { perror ("read"); break; }
@@ -195,32 +196,40 @@ int CSNode::clientPUSH (CSNode::CSConnection *connection, const char *filename)
         connection->readBuffer.fill(buffer, bytes);
         //...then extract from it
         while((bytes = connection->readBuffer.readBytes(buffer, bufSize)) > 0) {
-            fd_set wfds;
-            struct timeval tv;
-            tv.tv_sec = 5;
-            tv.tv_usec = 0;
-            FD_ZERO(&wfds);
-            FD_SET(connection->connectionSocket, &wfds);
-            int ret = select(connection->connectionSocket+1, 0, &wfds, 0, &tv);
-            if(ret < 0) {
-                perror("select");
-                break;
-            }
-            if(FD_ISSET(connection->connectionSocket, &wfds)) {
-                bytes = send(connection->connectionSocket, buffer, bytes, 0);
-                if(bytes < 0) {
-                    if(errno == ECONNRESET) {
-                        perror("send");
-                        connection->isValid = false;
-                        break;
-                    }
-                    perror("send");
+            for(int i = 0; i < 5; i++) {
+                fd_set wfds;
+                struct timeval tv;
+                tv.tv_sec = 5;
+                tv.tv_usec = 0;
+                FD_ZERO(&wfds);
+                FD_SET(connection->connectionSocket, &wfds);
+                int ret = select(connection->connectionSocket+1, 0, &wfds, 0, &tv);
+                if(ret < 0) {
+                    perror("select");
+                    throw(1);
                 }
-                else totalSent += bytes;
-                cout << ".";
-            } else break;
+                if(FD_ISSET(connection->connectionSocket, &wfds)) {
+                    bytes = send(connection->connectionSocket, buffer, bytes, 0);
+                    if(bytes < 0) {
+                        if(errno == ECONNRESET) {
+                            connection->isValid = false;                        
+                        }
+                        perror("send");
+                        throw(0);
+                    }
+                    else totalSent += bytes;
+                    cout << ".";
+                    break; //successfull send
+                }
+            }
         }
     }
+    } catch(int kind) {
+        if(kind == 1)
+            perror("select");
+        else perror("send");
+    }
+
     if(totalSent != totalRead)
         cout << "Mismatch between bytes read and bytes sent.\n";
     else
@@ -419,43 +428,48 @@ int CSNode::serverPUSH (CSNode::CSConnection *connection, const char *filename) 
         bytesWritten += bytes2;
 //		cout << "bytes(*) : " << bytes1 << " " << bytes2 << " " << bytesWritten << " " << bytesReceived << "\n";
     }
+    try {
     while (bytesReceived < size && bytesReceived == bytesWritten) {
-        fd_set rfds;
-        struct timeval tv;
-        tv.tv_sec = 5;
-        tv.tv_usec = 0;
-        FD_ZERO(&rfds);
-        FD_SET(connection->connectionSocket, &rfds);
-        int ret = select(connection->connectionSocket+1, &rfds, 0, 0, &tv);
-        if(ret < 0) {
-            perror("select");
-            break;
+        for(int i = 0; i < 5; i++) {
+            if(i > 0) printf(",-");
+            fd_set rfds;
+            struct timeval tv;
+            tv.tv_sec = 5;
+            tv.tv_usec = 0;
+            FD_ZERO(&rfds);
+            FD_SET(connection->connectionSocket, &rfds);
+            int ret = select(connection->connectionSocket+1, &rfds, 0, 0, &tv);
+            if(ret < 0) {
+                throw(1);
+            }
+            if(FD_ISSET(connection->connectionSocket, &rfds)) {
+                int bytes = 0;
+                while (bytes == 0)
+                    bytes = recv(connection->connectionSocket, buffer, MIN(bufSize, size-bytesReceived), 0);
+                if (bytes < 0) {
+                    if(errno == ECONNRESET) {
+                        connection->isValid = false;
+                    }
+                    throw(0);
+                }
+                bytesReceived += bytes;
+                //first fill the buffer (in case it was already non-empty)
+                connection->readBuffer.fill(buffer, bytes);
+                //...then extract from it
+                int bytes1, bytes2;
+                while((bytes1 = connection->readBuffer.readBytes(buffer, MIN(bufSize, size - bytesWritten))) > 0) {
+                    bytes2 = write(fd, buffer, bytes1);
+                    bytesWritten += bytes2;
+                }
+            }
         }
-        if(FD_ISSET(connection->connectionSocket, &rfds)) {
-            int bytes = 0;
-            while (bytes == 0)
-                bytes = recv(connection->connectionSocket, buffer, MIN(bufSize, size-bytesReceived), 0);
-            if (bytes < 0) {
-                if(errno == ECONNRESET) {
-                    printf("send: connection reset");
-                    connection->isValid = false;
-                    break;
-                } else perror ("recv)");
-            }
-            bytesReceived += bytes;
-            //first fill the buffer (in case it was already non-empty)
-            connection->readBuffer.fill(buffer, bytes);
-            //...then extract from it
-            int bytes1, bytes2;
-            while((bytes1 = connection->readBuffer.readBytes(buffer, MIN(bufSize, size - bytesWritten))) > 0) {
-                bytes2 = write(fd, buffer, bytes1);
-                bytesWritten += bytes2;
-            }
-//			cout << "bytes : " << bytes << " " << bytesWritten << " " << bytesReceived << "\n";
-        } else break;
         cout << ".";
     }
     cout << "ok.\n";
+    } catch(int kind) {
+        if(kind == 1) perror("select");
+        else perror("send");
+    }
 
     if(bytesWritten == size)
         printf("<PUSH> : success\n");
