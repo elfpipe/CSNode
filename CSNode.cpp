@@ -430,7 +430,8 @@ int CSNode::serverPUSH (CSNode::CSConnection *connection, const char *filename) 
     }
     try {
     while (bytesReceived < size && bytesReceived == bytesWritten) {
-        for(int i = 0; i < 5; i++) {
+        int i;
+        for(i = 0; i < 5; i++) {
             if(i > 0) printf(",-");
             fd_set rfds;
             struct timeval tv;
@@ -463,12 +464,14 @@ int CSNode::serverPUSH (CSNode::CSConnection *connection, const char *filename) 
                 }
             }
         }
+        if(i == 5) throw(2);
         cout << ".";
     }
     cout << "ok.\n";
     } catch(int kind) {
         if(kind == 1) perror("select");
-        else perror("send");
+        else if(kind == 0) perror("recv");
+        else printf("Trials max reached. Abandonning recv.\n");
     }
 
     if(bytesWritten == size)
